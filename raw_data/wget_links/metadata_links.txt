@@ -1,0 +1,5 @@
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/laion2B-multi-metadata/metadata_0000.parquet
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/laion2B-multi-metadata/metadata_0001.parquet
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/laion2B-multi-metadata/metadata_0002.parquet
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/laion2B-multi-metadata/metadata_0003.parquet
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/laion2B-multi-metadata/metadata_0004.parquet

@@ -1,0 +1,5 @@
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/img_emb/img_emb_0000.npy
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/img_emb/img_emb_0001.npy
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/img_emb/img_emb_0002.npy
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/img_emb/img_emb_0003.npy
+https://the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-multi/img_emb/img_emb_0004.npy

@@ -1,0 +1,8 @@
+numpy
+pyarrow
+pandas
+requests
+tqdm
+pyquery
+scikit-learn
+faiss-gpu

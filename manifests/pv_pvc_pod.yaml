@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: laion-pvc
+  namespace: qa
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1000Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: laion-pvc-pv
+  namespace: qa
+spec:
+  capacity:
+    storage: 1000Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-path
+  local:
+    path: /data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - 4am-node15
+---
+kind: Pod
+metadata:
+  name: laion-test-1
+  namespace: qa
+spec:
+  containers:
+    - name: main
+      image: 'harbor.milvus.io/qa/fouram:1.1'
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/bash
+        - '-c'
+      args:
+        - "while :; do echo '.'; sleep 5 ; done"
+      resources:
+        limits:
+         cpu: "12"
+         nvidia.com/gpu: "2"
+         memory: 16Gi
+        requests:
+         cpu: "12"
+         nvidia.com/gpu: "2"
+         memory: 16Gi
+      volumeMounts:
+        - mountPath: /test
+          name: db-data-path
+        - name: local-persistent-storage
+          mountPath: /data
+  volumes:
+    - name: db-data-path
+      nfs:
+        path: /volume1/test
+        server: 172.xx.xx.249
+    - name: local-persistent-storage
+      persistentVolumeClaim:
+        claimName: laion-pvc
+  tolerations:
+    - key: "node-role.kubernetes.io/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
+  nodeSelector:
+    "node-role.kubernetes.io/gpu": ""

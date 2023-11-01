@@ -52,7 +52,7 @@ def get_gt(metric_type, xb, xq, k):
 
 def get_ground_truth_ids():
     gnd_file_name = "/test/raw_data/laion5b_parquet/gnd/faiss_idx_2M.ivecs"
-    a = np.fromfile(gnd_file_name, dtype='int64')
+    a = np.fromfile(gnd_file_name, dtype='int32')
     d = a[0]
     true_ids = a.reshape(-1, d + 1)[:, 1:].copy()
     return true_ids
@@ -61,7 +61,7 @@ def get_ground_truth_ids():
 def ivecs_write(fname, m):
     n, d = m.shape
     print(f"gnd shape: {n}, {d}")
-    m1 = np.empty((n, d + 1), dtype='int64')
+    m1 = np.empty((n, d + 1), dtype='int32')
     m1[:, 0] = d
     m1[:, 1:] = m
     print(m1)
@@ -107,7 +107,7 @@ if __name__ == '__main__':
         """
         # gnd_ids: [ [(pk, distance), ...], ...]
         """
-        gnd_ids = np.empty(distance.shape, dtype=[('idx', "i8"), ('distance', "f8")])
+        gnd_ids = np.empty(distance.shape, dtype=[('idx', "i4"), ('distance', "f4")])
         for index, value in np.ndenumerate(ids):
             gnd_ids[index] = (idx_df.iloc[value], distance[index])
         log.info(f"gnd_ids shape: {gnd_ids.shape} {gnd_ids[0].shape}")

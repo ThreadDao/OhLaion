@@ -6,7 +6,7 @@ import numpy as np
 def ivecs_write(fname, m):
     n, d = m.shape
     print(f"gnd shape: {n}, {d}")
-    m1 = np.empty((n, d + 1), dtype='int64')
+    m1 = np.empty((n, d + 1), dtype='int32')
     m1[:, 0] = d
     m1[:, 1:] = m
     print(m1)
@@ -71,5 +71,5 @@ def merge_gnd(url, start_epoch, end_epoch, top_k, init_top_sorted_result):
 
 
 if __name__ == '__main__':
-    url = "/test/raw_data/laion5b_parquet/distance_top1000_faiss"
-    auto_merge_gnd(url, start_epoch=0, end_epoch=1032, top_k=1000)
+    url = "/test/xxx/raw_data/laion5b_parquet/laion1B-nolang/distance_top1000"
+    auto_merge_gnd(url, start_epoch=0, end_epoch=1271, top_k=1000)

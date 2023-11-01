@@ -6,8 +6,6 @@ import numpy as np
 if __name__ == '__main__':
     base_url = '/test/raw_data/laion5b_parquet'
     nq = 10000
-    start = 0
-    end = 100
     sample_file = random.sample(range(100), 5)
     log.info(f"sample file {sample_file}")
     rows_per = int(nq / len(sample_file))

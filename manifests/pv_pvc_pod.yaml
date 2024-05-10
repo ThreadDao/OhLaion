@@ -34,6 +34,7 @@ spec:
           values:
           - 4am-node15
 ---
+apiVersion: v1
 kind: Pod
 metadata:
   name: laion-test-1

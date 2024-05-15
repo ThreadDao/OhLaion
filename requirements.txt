@@ -1,6 +1,7 @@
 numpy
 pyarrow
 pandas
+fastparquet
 requests
 tqdm
 pyquery

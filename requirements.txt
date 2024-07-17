@@ -1,4 +1,4 @@
-numpy
+numpy==1.26.4
 pyarrow
 pandas
 fastparquet
@@ -6,4 +6,4 @@ requests
 tqdm
 pyquery
 scikit-learn
-faiss-gpu
+faiss-gpu==1.8.0

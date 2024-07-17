@@ -1,49 +1,20 @@
 # faiss-gpu maybe need pythjon3.9
 # conda install: conda install -c pytorch faiss-gpu
-
 import faiss
 import numpy as np
+from sklearn import preprocessing
 import pandas as pd
 from utils.utils_log import log
-from utils.utils_data import ivecs_write, fvecs_write, ivecs_read, fvecs_read
 
 
-def get_recall_value(true_ids, result_ids):
-    """
-    Use the intersection length
-    """
-    sum_radio = 0.0
-    topk_check = True
-    log.debug(f"result_ids len: {len(result_ids)}")
-    log.debug(f"result topk len: {len(result_ids[0])}")
-    for index, item in enumerate(result_ids):
-        # log.debug("[get_recall_value] true_ids: {}".format(true_ids[index]))
-        # log.debug("[get_recall_value] result_ids: {}".format(item))
-        # log.debug(f"index: {index}")
-
-        # _tmp = set(item).difference(set(true_ids[index]))
-        # if len(_tmp) != 0:
-        #     log.debug("[get_recall_value] ids in result_ids but not in true_ids: {}".format(_tmp))
-
-        tmp = set(true_ids[index]).intersection(set(item))
-        if len(item) != 0:
-            sum_radio += len(tmp) / len(item)
-            # log.debug(f"sum_radio: {sum_radio}")
-        else:
-            topk_check = False
-            log.error("[get_recall_value] Length of returned topk is 0, please check.")
-    if topk_check is False:
-        raise ValueError("[get_recall_value] The result of topk is wrong, please check: {}".format(result_ids))
-    return round(sum_radio / len(result_ids), 3)
-
-
-def get_gt(metric_type, xb, xq, k):
+def get_gt(metric_type, xb, xq, k, g_device):
     flat_config = faiss.GpuIndexFlatConfig()
-    # flat_config.device = 1
+    flat_config.device = g_device
     res = faiss.StandardGpuResources()
     index = None
     log.info("start faiss index")
     if metric_type == "L2":
+        # index = faiss.IndexFlatL2(xb.shape[1])
         index = faiss.GpuIndexFlatL2(res, xb.shape[1], flat_config)
 
     index.add(xb)
@@ -51,86 +22,67 @@ def get_gt(metric_type, xb, xq, k):
     return index.search(xq, k)
 
 
-def gen_gnd(train_data_path, query_data_path, top_k=10, expr=None):
-    # var
+def gen_file_link(epoch):
+    url = "/home/zong/data/wiki"
+    return f"{url}/wikipedia_{epoch:05d}.parquet"
+
+
+def gen_gnd(train_data_range, query_data_path, top_k=1000, expr=None, gpu_device=0):
+    total = 0
     # read query
-    xq = np.load(query_data_path)
-    xq = xq.astype(np.float32)
-    log.debug(f"xq shape: {xq.shape}")
-    log.debug(f"xq type: {type(xq)}, xq[0] type: {type(xq[0])}")
+    _xq = pd.read_parquet(query_data_path, columns=["emb"])
+    log.debug(f"xq shape: {_xq.shape}")
+    log.debug(f"xq type: {type(_xq)}, xq[0] type: {type(_xq['emb'][0][0])}")
+    xq = np.array(_xq['emb'].tolist(), dtype=np.float32)
+    del _xq
 
     # read train
-    # read npy
-    train_npy = np.load(train_data_path)
-    train_npy = train_npy.astype(dtype=np.float32)
-    log.info(train_npy.shape)
-    log.info(train_npy.dtype)
-    # gen train df
-    int_values = pd.Series(data=[i for i in range(0, train_npy.shape[0])])
-    df = pd.DataFrame({"id": int_values})
+    for i in range(train_data_range[0], train_data_range[1]):
+        train_data_path = gen_file_link(i)
+        log.info(f"train {i}")
+        if expr is not None:
+            category_df = pd.read_parquet(train_data_path, columns=["id", "category", "tags"])
+            category_df.query(expr=expr, inplace=True)
+            if category_df.shape[0] == 0:
+                continue
+        df = pd.read_parquet(train_data_path, columns=["emb", "id", "category", "tags"])
+        # filter train data with expr
+        if expr is not None:
+            df.query(expr=expr, inplace=True)
+        idx_df = df["id"]
+        log.debug(f"{i} train dataframe shape: {df.shape}")
+        total += df.shape[0]
+        xb = np.array(df['emb'].tolist(), dtype=np.float32)
 
-    df["float32_vector"] = train_npy.tolist()
-    log.debug(f"train dataframe shape before expr: {df.shape}")
-    if expr is not None:
-        df.query(expr=expr, inplace=True)
-    log.debug(f"train dataframe shape after expr: {df.shape}")
-    log.debug(df)
-    idx_df = df["id"]
-    log.info(idx_df)
-    log.debug(idx_df.shape)
-    xb = np.array(df['float32_vector'].tolist(), dtype=np.float32)
-    log.debug(f"xb shape: {xb.shape}")
+        # concatenate and normalize
+        log.debug(f"xb shape: {xb.shape}")
+        if xb.shape[0] == 0:
+            continue
+        xb = preprocessing.normalize(xb, axis=1, norm="l2")
+        log.debug(f"xb shape after normalize: {xb.shape}")
 
-    # concatenate and not need normalize
-    # faiss index and search
-    distance, ids = get_gt("L2", xb, xq, top_k)
-    log.info(f"distance shape: {distance.shape}")
-    log.info(f"ids shape: {ids.shape}")
+        # faiss index and search
+        distance, ids = get_gt("L2", xb, xq, top_k, gpu_device)
+        log.info(f"distance shape: {distance.shape}")
+        log.info(f"ids shape: {ids.shape}")
 
-    """
-    # gnd_ids: [ [(pk, distance), ...], ...]
-    """
-    gnd_ids = np.empty(distance.shape, dtype=[('idx', "i4"), ('distance', "f4")])
-    for index, value in np.ndenumerate(ids):
-        gnd_ids[index] = (idx_df.iloc[value], distance[index])
-    log.info(f"gnd_ids shape: {gnd_ids.shape} {gnd_ids[0].shape}")
-    log.info(gnd_ids)
-    idx = np.empty(gnd_ids.shape, dtype="i4")
-    dis = np.empty(gnd_ids.shape, dtype="f4")
-    for index, value in np.ndenumerate(gnd_ids):
-        idx[index] = value[0]
-        dis[index] = value[1]
-
-    idx_path = '~/gnd/idx_0M.ivecs'
-    dis_path = '~/gnd/dis_0M.fvecs'
-    ivecs_write(idx_path, idx)
-    fvecs_write(dis_path, dis)
-
-    # read
-    log.info(ivecs_read(idx_path))
-    log.info(fvecs_read(dis_path))
-    # true_ids = ivecs_read(idx_path)
-    # recall = get_recall_value(true_ids[:10000, :top_k], ids)
-    # log.info(f"recall: {recall}")
-
-
-def parser_data_size(data_size):
-    return eval(str(data_size)
-                .replace("k", "*1000")
-                .replace("w", "*10000")
-                .replace("m", "*1000000")
-                .replace("b", "*1000000000")
-                )
+        """
+        # gnd_ids: [ [(pk, distance), ...], ...]
+        """
+        gnd_ids = np.empty(distance.shape, dtype=[('idx', "i4"), ('distance', "f4")])
+        for index, value in np.ndenumerate(ids):
+            gnd_ids[index] = (idx_df.iloc[value], distance[index])
+        log.info(f"gnd_ids shape: {gnd_ids.shape} {gnd_ids[0].shape}")
+        log.info(gnd_ids)
+        dis_path = f'/home/zong/data/wiki/distance/distance_{i:05d}.npy'
+        np.save(dis_path, gnd_ids)
+        log.info(f"until train_{i}, total hits {total}")
 
 
 if __name__ == '__main__':
-    query_path = "/test/milvus/raw_data/sift10w/query.npy"
-    train_path = "/test/milvus/raw_data/sift10w/binary_128d_00000.npy"
-    gen_gnd(train_path, query_path, top_k=1000, expr='id >= 200')
-
-    # # recall
-    # result_ids = milvus.search
-    # idx_path = '/home/zong/Downloads/gnd/idx_0M.ivecs'
-    # true_ids = ivecs_read(idx_path)
-    # recall = get_recall_value(true_ids[:10000, :1000], result_ids)
-    # log.info(f"recall: {recall}")
+    train_file_range = [0, 100]
+    query_path = "/home/zong/data/wiki/wikipedia_query_set.parquet"
+    _top_k = 1000
+    _expr = "id > 100"
+    _gpu_device = 0
+    gen_gnd(train_file_range, query_path, _top_k, _expr, _gpu_device)

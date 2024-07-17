@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from multiprocessing import Pool
 import numpy as np
@@ -13,8 +14,12 @@ def ivecs_write(fname, m):
     m1.tofile(fname)
 
 
-def read_topk_from_npy(npy_path, top_k):
-    return np.load(npy_path, allow_pickle=True)
+def read_topk_from_npy(npy_path):
+    if os.path.exists(npy_path):
+        print(f"read file {npy_path}")
+        return np.load(npy_path, allow_pickle=True)
+    else:
+        return
 
 
 def merge_top_k(wait_merge_top_k_list, top_k):
@@ -38,9 +43,11 @@ def merge_gnd(url, start_epoch, end_epoch, top_k, init_top_sorted_result):
     with Pool() as pool:
         print(f"{datetime.now()} load pool = {pool}")
         all_npy_top_k = pool.starmap(read_topk_from_npy,
-                                     [(f"{url}/distance_{index:05d}.npy", top_k) for index in
-                                      range(start_epoch, end_epoch)])
+                                     [(f"{url}/distance_{index:04d}.npy", top_k) for index in
+                                      range(start_epoch, end_epoch) if
+                                      os.path.exists(f"{url}/distance_{index:04d}.npy")])
     print(f"{datetime.now()} all npy top k load done")
+    print(f'all_npy_top_k len {len(all_npy_top_k)}')
 
     if init_top_sorted_result is not None:
         all_npy_top_k.append(init_top_sorted_result)

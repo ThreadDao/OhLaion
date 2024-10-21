@@ -44,7 +44,7 @@ spec:
   nodeName: 4am-node15
   containers:
     - name: main
-      image: 'harbor.milvus.io/qa/fouram:1.1'
+      image: 'harbor.milvus.io/qa/fouram:1.5'
       imagePullPolicy: IfNotPresent
       command:
         - /bin/bash
